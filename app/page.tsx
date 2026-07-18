@@ -1,52 +1,194 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- These local transparent WebP sprites need fluid intrinsic sizing. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Question = { a: number; b: number; answer: number; choices: number[] };
-type Animal = { emoji: string; name: string; color: string };
+type Guide = { name: string; image: string; cheer: string };
 
 const ROUND_LENGTH = 12;
-const animals: Animal[] = [
-  { emoji: "🦁", name: "Leo", color: "#ffb22e" }, { emoji: "🦊", name: "Pip", color: "#ff7b54" },
-  { emoji: "🐼", name: "Mochi", color: "#77c66e" }, { emoji: "🦒", name: "Gigi", color: "#ffd166" },
-  { emoji: "🐘", name: "Bubbles", color: "#84c5f4" }, { emoji: "🐨", name: "Koko", color: "#b9a7e8" },
-  { emoji: "🦦", name: "Ollie", color: "#d9a46f" }, { emoji: "🐯", name: "Tango", color: "#ff9f43" },
+const MIN_FACTOR = 2;
+const MAX_FACTOR = 12;
+
+const guides: Guide[] = [
+  { name: "Leo", image: "/assets/safari/guide-lion.webp", cheer: "Roar-some!" },
+  { name: "Bubbles", image: "/assets/safari/guide-elephant.webp", cheer: "Trunk-tastic!" },
+  { name: "Gigi", image: "/assets/safari/guide-giraffe.webp", cheer: "Standing tall!" },
+  { name: "Ziggy", image: "/assets/safari/guide-zebra.webp", cheer: "Stripe-tacular!" },
+  { name: "Mika", image: "/assets/safari/guide-meerkat.webp", cheer: "Sharp spotting!" },
 ];
-const encouragements = ["Roar-some!", "Wildly correct!", "Safari fire!", "Math magic!", "Brilliant beast mode!"];
 
 const shuffle = <T,>(items: T[]) => {
   const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapWith = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapWith]] = [copy[swapWith], copy[index]];
   }
   return copy;
 };
 
+const randomFactor = () => Math.floor(Math.random() * (MAX_FACTOR - MIN_FACTOR + 1)) + MIN_FACTOR;
+
 function makeQuestion(table: number | null, avoid?: string): Question {
-  let a = table ?? Math.floor(Math.random() * 12) + 1;
-  let b = Math.floor(Math.random() * 12) + 1;
+  let a = table ?? randomFactor();
+  let b = randomFactor();
   let tries = 0;
-  while (`${a}x${b}` === avoid && tries < 8) {
-    a = table ?? Math.floor(Math.random() * 12) + 1;
-    b = Math.floor(Math.random() * 12) + 1;
+  while (`${a}x${b}` === avoid && tries < 12) {
+    a = table ?? randomFactor();
+    b = randomFactor();
     tries += 1;
   }
+
   const answer = a * b;
-  const nearby = new Set<number>([answer]);
-  const offsets = shuffle([-12, -10, -8, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 8, 10, 12]);
-  for (const offset of offsets) {
-    if (nearby.size >= 4) break;
-    const option = answer + offset;
-    if (option > 0 && option <= 144) nearby.add(option);
+  const candidates = shuffle([
+    answer - a,
+    answer + a,
+    answer - b,
+    answer + b,
+    answer - 2,
+    answer + 2,
+    answer - 5,
+    answer + 5,
+  ]).filter((value) => value >= MIN_FACTOR * MIN_FACTOR && value <= MAX_FACTOR * MAX_FACTOR && value !== answer);
+  const choices = new Set<number>([answer]);
+  for (const candidate of candidates) {
+    choices.add(candidate);
+    if (choices.size === 4) break;
   }
-  return { a, b, answer, choices: shuffle([...nearby]) };
+  while (choices.size < 4) choices.add(Math.max(4, Math.min(144, answer + choices.size * 3)));
+  return { a, b, answer, choices: shuffle([...choices]) };
 }
 
-function loadNumber(key: string, fallback: number) {
-  if (typeof window === "undefined") return fallback;
+function loadNumber(key: string) {
+  if (typeof window === "undefined") return 0;
   const value = Number(window.localStorage.getItem(key));
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function SafariWebGL({ celebrate }: { celebrate: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const gl = canvas.getContext("webgl", { alpha: true, antialias: true });
+    if (!gl) return;
+
+    const vertexSource = `
+      attribute vec2 a_position;
+      attribute float a_size;
+      attribute float a_phase;
+      uniform float u_time;
+      uniform vec2 u_pointer;
+      uniform float u_burst;
+      varying float v_alpha;
+      void main() {
+        float drift = sin(u_time * 0.00045 + a_phase) * 0.035;
+        vec2 pos = a_position + vec2(drift + u_pointer.x * 0.018, cos(u_time * 0.00032 + a_phase) * 0.025 + u_pointer.y * 0.012);
+        pos *= 1.0 + u_burst * 0.12;
+        gl_Position = vec4(pos, 0.0, 1.0);
+        gl_PointSize = a_size * (1.0 + u_burst * 1.8);
+        v_alpha = 0.34 + 0.42 * sin(u_time * 0.001 + a_phase);
+      }
+    `;
+    const fragmentSource = `
+      precision mediump float;
+      uniform float u_burst;
+      varying float v_alpha;
+      void main() {
+        vec2 point = gl_PointCoord - vec2(0.5);
+        float distanceFromCenter = length(point);
+        float glow = smoothstep(0.5, 0.0, distanceFromCenter);
+        vec3 gold = mix(vec3(1.0, 0.72, 0.16), vec3(1.0, 0.96, 0.56), glow);
+        gl_FragColor = vec4(gold, glow * (v_alpha + u_burst * 0.45));
+      }
+    `;
+
+    const compile = (type: number, source: string) => {
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+    };
+    const vertex = compile(gl.VERTEX_SHADER, vertexSource);
+    const fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
+    if (!vertex || !fragment) return;
+    const program = gl.createProgram();
+    if (!program) return;
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+    gl.useProgram(program);
+
+    const particleCount = 54;
+    const data = new Float32Array(particleCount * 4);
+    for (let index = 0; index < particleCount; index += 1) {
+      data[index * 4] = Math.random() * 2 - 1;
+      data[index * 4 + 1] = Math.random() * 1.5 - 0.75;
+      data[index * 4 + 2] = 4 + Math.random() * 9;
+      data[index * 4 + 3] = Math.random() * Math.PI * 2;
+    }
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const stride = 4 * Float32Array.BYTES_PER_ELEMENT;
+    const position = gl.getAttribLocation(program, "a_position");
+    const size = gl.getAttribLocation(program, "a_size");
+    const phase = gl.getAttribLocation(program, "a_phase");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(size);
+    gl.vertexAttribPointer(size, 1, gl.FLOAT, false, stride, 2 * Float32Array.BYTES_PER_ELEMENT);
+    gl.enableVertexAttribArray(phase);
+    gl.vertexAttribPointer(phase, 1, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT);
+    const timeUniform = gl.getUniformLocation(program, "u_time");
+    const pointerUniform = gl.getUniformLocation(program, "u_pointer");
+    const burstUniform = gl.getUniformLocation(program, "u_burst");
+    const pointer = { x: 0, y: 0 };
+    const onPointerMove = (event: PointerEvent) => {
+      pointer.x = event.clientX / window.innerWidth - 0.5;
+      pointer.y = 0.5 - event.clientY / window.innerHeight;
+    };
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+
+    let frame = 0;
+    let start = performance.now();
+    const render = (time: number) => {
+      const scale = Math.min(window.devicePixelRatio || 1, 1.5);
+      const width = Math.floor(canvas.clientWidth * scale);
+      const height = Math.floor(canvas.clientHeight * scale);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, width, height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.uniform1f(timeUniform, time);
+      gl.uniform2f(pointerUniform, pointer.x, pointer.y);
+      const elapsed = time - start;
+      const burst = celebrate ? Math.max(0, 1 - elapsed / 1100) : 0;
+      gl.uniform1f(burstUniform, burst);
+      gl.drawArrays(gl.POINTS, 0, particleCount);
+      frame = requestAnimationFrame(render);
+    };
+    start = performance.now();
+    frame = requestAnimationFrame(render);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", onPointerMove);
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+    };
+  }, [celebrate]);
+
+  return <canvas ref={canvasRef} className="safari-webgl" aria-hidden="true" />;
 }
 
 export default function Home() {
@@ -55,24 +197,23 @@ export default function Home() {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
   const [totalStars, setTotalStars] = useState(0);
-  const [unlocked, setUnlocked] = useState(1);
   const [selected, setSelected] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("Pick the answer to help Leo explore!");
+  const [feedback, setFeedback] = useState("Choose your answer!");
   const [celebrate, setCelebrate] = useState(false);
   const [finished, setFinished] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [missed, setMissed] = useState<{ a: number; b: number }[]>([]);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setBestStreak(loadNumber("serena-best-streak", 0));
-    setTotalStars(loadNumber("serena-stars", 0));
-    setUnlocked(Math.min(animals.length, loadNumber("serena-animals", 1)));
+    const frame = requestAnimationFrame(() => setTotalStars(loadNumber("serena-stars")));
+    return () => cancelAnimationFrame(frame);
   }, []);
-
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
+
+  const guide = guides[round % guides.length];
 
   const playTone = useCallback((correct: boolean) => {
     if (!soundOn || typeof window === "undefined") return;
@@ -83,139 +224,177 @@ export default function Home() {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = correct ? "sine" : "triangle";
-      oscillator.frequency.setValueAtTime(correct ? 540 : 220, context.currentTime);
-      if (correct) oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.18);
-      gain.gain.setValueAtTime(0.12, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.28);
-      oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + 0.3);
-    } catch { /* Sound is a bonus. */ }
+      oscillator.frequency.setValueAtTime(correct ? 520 : 210, context.currentTime);
+      if (correct) oscillator.frequency.exponentialRampToValueAtTime(920, context.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.1, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.32);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.34);
+    } catch { /* Sound is optional. */ }
   }, [soundOn]);
 
-  const newQuestion = useCallback((activeTable: number | null, previous?: Question) => {
-    const retry = missed.length > 0 && Math.random() < 0.4 ? missed[0] : null;
+  const nextQuestion = useCallback((activeTable: number | null, previous: Question) => {
+    const retry = missed.length > 0 && Math.random() < 0.45 ? missed[0] : null;
     if (retry) {
-      const base = makeQuestion(retry.a, `${previous?.a}x${previous?.b}`);
+      const retried = makeQuestion(retry.a, `${previous.a}x${previous.b}`);
       const answer = retry.a * retry.b;
-      const choices = shuffle([answer, ...base.choices.filter((value) => value !== answer)]).slice(0, 4);
-      setQuestion({ a: retry.a, b: retry.b, answer, choices });
+      setQuestion({ ...retried, a: retry.a, b: retry.b, answer, choices: shuffle([answer, ...retried.choices.filter((choice) => choice !== answer)]).slice(0, 4) });
       setMissed((items) => items.slice(1));
-    } else setQuestion(makeQuestion(activeTable, `${previous?.a}x${previous?.b}`));
+      return;
+    }
+    setQuestion(makeQuestion(activeTable, `${previous.a}x${previous.b}`));
   }, [missed]);
-
-  const saveProgress = (newBest: number, newStars: number, newUnlocked: number) => {
-    window.localStorage.setItem("serena-best-streak", String(newBest));
-    window.localStorage.setItem("serena-stars", String(newStars));
-    window.localStorage.setItem("serena-animals", String(newUnlocked));
-  };
 
   const answerQuestion = useCallback((choice: number) => {
     if (selected !== null || finished) return;
-    setSelected(choice);
     const correct = choice === question.answer;
+    setSelected(choice);
     playTone(correct);
     if (correct) {
-      const nextStreak = streak + 1;
-      const nextBest = Math.max(bestStreak, nextStreak);
       const nextStars = totalStars + 1;
-      const nextUnlocked = Math.min(animals.length, Math.max(unlocked, Math.floor(nextStars / 4) + 1));
-      setScore((value) => value + 1); setStreak(nextStreak); setBestStreak(nextBest); setTotalStars(nextStars); setUnlocked(nextUnlocked);
-      setCelebrate(true); setFeedback(encouragements[Math.floor(Math.random() * encouragements.length)]);
-      saveProgress(nextBest, nextStars, nextUnlocked);
+      setScore((value) => value + 1);
+      setStreak((value) => value + 1);
+      setTotalStars(nextStars);
+      setCelebrate(true);
+      setFeedback(`${guide.cheer} ${question.a} × ${question.b} = ${question.answer}`);
+      window.localStorage.setItem("serena-stars", String(nextStars));
     } else {
-      setStreak(0); setFeedback(`${question.a} × ${question.b} = ${question.answer}. You’ve got the next one!`);
+      setStreak(0);
+      setFeedback(`${question.a} × ${question.b} = ${question.answer}. You’ve got the next one!`);
       setMissed((items) => [...items, { a: question.a, b: question.b }]);
     }
+
     const nextRound = round + 1;
     advanceTimer.current = setTimeout(() => {
-      setCelebrate(false); setSelected(null);
-      if (nextRound >= ROUND_LENGTH) { setFinished(true); setRound(nextRound); }
-      else { setRound(nextRound); newQuestion(table, question); setFeedback("Choose the answer!"); }
-    }, correct ? 900 : 1500);
-  }, [bestStreak, finished, newQuestion, playTone, question, round, selected, streak, table, totalStars, unlocked]);
+      setCelebrate(false);
+      setSelected(null);
+      if (nextRound >= ROUND_LENGTH) {
+        setRound(nextRound);
+        setFinished(true);
+      } else {
+        setRound(nextRound);
+        nextQuestion(table, question);
+        setFeedback("Choose your answer!");
+      }
+    }, correct ? 1000 : 1550);
+  }, [finished, guide.cheer, nextQuestion, playTone, question, round, selected, table, totalStars]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const index = Number(event.key) - 1;
-      if (index >= 0 && index <= 3 && question.choices[index] !== undefined) answerQuestion(question.choices[index]);
+      if (index >= 0 && index < question.choices.length) answerQuestion(question.choices[index]);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [answerQuestion, question.choices]);
 
-  const changeTable = (nextTable: number | null) => {
+  const startRound = (nextTable: number | null) => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    setTable(nextTable); setRound(0); setScore(0); setStreak(0); setSelected(null); setFinished(false); setCelebrate(false);
-    setFeedback(nextTable ? `Welcome to the ${nextTable}s trail!` : "Safari Mix activated — anything can happen!");
+    setTable(nextTable);
     setQuestion(makeQuestion(nextTable));
+    setRound(0);
+    setScore(0);
+    setStreak(0);
+    setSelected(null);
+    setFinished(false);
+    setCelebrate(false);
+    setMissed([]);
+    setFeedback(nextTable ? `${nextTable}s trail ready!` : "Safari Mix ready!");
   };
 
-  const progress = Math.min(100, (round / ROUND_LENGTH) * 100);
-  const guide = animals[Math.min(unlocked - 1, animals.length - 1)];
-  const confetti = useMemo(() => Array.from({ length: 18 }, (_, index) => index), []);
+  const handleTilt = (event: React.PointerEvent<HTMLElement>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTilt({
+      x: ((event.clientY - rect.top) / rect.height - 0.5) * -3,
+      y: ((event.clientX - rect.left) / rect.width - 0.5) * 4,
+    });
+  };
+
+  const progressDots = useMemo(() => Array.from({ length: ROUND_LENGTH }, (_, index) => index), []);
 
   return (
-    <main className="game-shell">
-      <div className="sun" aria-hidden="true" /><div className="cloud cloud-one" aria-hidden="true" /><div className="cloud cloud-two" aria-hidden="true" />
-      <div className="hill hill-back" aria-hidden="true" /><div className="hill hill-front" aria-hidden="true" />
-      <header className="topbar">
-        <div className="brand" aria-label="Serena's Safari Math"><span className="brand-paw">🐾</span><div><strong>SERENA’S</strong><span>SAFARI MATH</span></div></div>
-        <div className="top-stats">
-          <div className="stat-pill"><span>⭐</span><div><b>{totalStars}</b><small>STARS</small></div></div>
-          <div className="stat-pill"><span>🔥</span><div><b>{bestStreak}</b><small>BEST</small></div></div>
-          <button className="sound-button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"}>{soundOn ? "🔊" : "🔇"}</button>
+    <main className={`safari-game ${celebrate ? "is-celebrating" : ""}`}>
+      <div className="safari-background" aria-hidden="true" />
+      <div className="safari-vignette" aria-hidden="true" />
+      <SafariWebGL celebrate={celebrate} />
+
+      <header className="game-header">
+        <div className="brand" aria-label="Serena's Safari Math">
+          <span className="brand-paw" aria-hidden="true">🐾</span>
+          <strong>SERENA’S <em>SAFARI MATH</em></strong>
+        </div>
+        <div className="game-stats">
+          <div className="hud-pill"><span aria-hidden="true">⭐</span><strong>{totalStars}</strong><small>STARS</small></div>
+          <div className="hud-pill streak"><span aria-hidden="true">🔥</span><strong>{streak}</strong><small>STREAK</small></div>
+          <button className="sound-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"}>{soundOn ? "🔊" : "🔇"}</button>
         </div>
       </header>
 
-      <section className="mission-bar" aria-label="Choose a multiplication table">
-        <div className="mission-copy"><span>🧭</span><div><small>CHOOSE YOUR TRAIL</small><strong>{table ? `${table}s Training` : "Safari Mix"}</strong></div></div>
-        <div className="table-tabs"><button className={table === null ? "active" : ""} onClick={() => changeTable(null)}>MIX</button>
-          {Array.from({ length: 11 }, (_, index) => index + 2).map((value) => <button className={table === value ? "active" : ""} onClick={() => changeTable(value)} key={value}>{value}s</button>)}
-        </div>
+      <section className="game-stage" aria-live="polite">
+        <label className="trail-picker">
+          <span className="sr-only">Choose a multiplication table</span>
+          <select value={table ?? "mix"} onChange={(event) => startRound(event.target.value === "mix" ? null : Number(event.target.value))}>
+            <option value="mix">MIX</option>
+            {Array.from({ length: 11 }, (_, index) => index + 2).map((value) => <option value={value} key={value}>{value}s</option>)}
+          </select>
+          <span aria-hidden="true">⌄</span>
+        </label>
+
+        {!finished ? (
+          <section
+            className="question-world"
+            onPointerMove={handleTilt}
+            onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+            style={{ "--tilt-x": `${tilt.x}deg`, "--tilt-y": `${tilt.y}deg` } as React.CSSProperties}
+          >
+            <img className={`animal-guide guide-${guide.name.toLowerCase()}`} src={guide.image} alt={`${guide.name}, your safari guide`} />
+            <div className="question-card">
+              <div className="question-count">QUESTION {round + 1} OF {ROUND_LENGTH}</div>
+              <div className="equation" aria-label={`${question.a} times ${question.b}`}>
+                <span>{question.a}</span><b>×</b><span>{question.b}</span><i>=</i><em>?</em>
+              </div>
+              <div className="answer-grid" role="group" aria-label="Answer choices">
+                {question.choices.map((choice, index) => {
+                  const isCorrect = selected !== null && choice === question.answer;
+                  const isWrong = selected === choice && choice !== question.answer;
+                  return (
+                    <button
+                      type="button"
+                      key={`${question.a}-${question.b}-${choice}`}
+                      onClick={() => answerQuestion(choice)}
+                      disabled={selected !== null}
+                      className={`${isCorrect ? "correct" : ""} ${isWrong ? "wrong" : ""}`}
+                      aria-label={`Answer ${choice}`}
+                    >
+                      <kbd>{index + 1}</kbd><strong>{choice}</strong>
+                      {isCorrect && <span className="answer-mark">✓</span>}
+                      {isWrong && <span className="answer-mark">×</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={`feedback ${selected === question.answer ? "positive" : ""}`}>{feedback}</p>
+              <div className="round-progress" aria-label={`${round} of ${ROUND_LENGTH} questions complete`}>
+                {progressDots.map((index) => <span key={index} className={index < round ? "done" : index === round ? "current" : ""} />)}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="finish-card">
+            <div className="finish-guides" aria-hidden="true">
+              {guides.map((animal) => <img src={animal.image} alt="" key={animal.name} />)}
+            </div>
+            <span>EXPEDITION COMPLETE</span>
+            <h1>{score >= 10 ? "Safari superstar!" : score >= 7 ? "Wild work!" : "Great exploring!"}</h1>
+            <p>You answered <strong>{score} of {ROUND_LENGTH}</strong> correctly.</p>
+            <button type="button" onClick={() => startRound(table)}>PLAY AGAIN</button>
+            {table !== null && <button type="button" className="mix-again" onClick={() => startRound(null)}>TRY SAFARI MIX</button>}
+          </section>
+        )}
       </section>
-
-      <div className="play-layout">
-        <section className="game-card" aria-live="polite">
-          {celebrate && <div className="confetti" aria-hidden="true">{confetti.map((piece) => <i key={piece} style={{ "--i": piece } as React.CSSProperties} />)}</div>}
-          {!finished ? <>
-            <div className="round-row"><span>Question {round + 1} of {ROUND_LENGTH}</span><span className="streak-badge">🔥 {streak} streak</span></div>
-            <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
-            <div className="question-stage"><div className="guide-bubble" style={{ background: guide.color }} aria-hidden="true">{guide.emoji}</div><div className="speech-tail" />
-              <div className="question-copy"><span>WHAT IS</span><h1>{question.a} <em>×</em> {question.b}<b>?</b></h1></div>
-            </div>
-            <div className="answers" role="group" aria-label="Answer choices">
-              {question.choices.map((choice, index) => {
-                const isCorrect = selected !== null && choice === question.answer;
-                const isWrong = selected === choice && choice !== question.answer;
-                return <button key={`${question.a}-${question.b}-${choice}`} onClick={() => answerQuestion(choice)} disabled={selected !== null} className={`${isCorrect ? "correct" : ""} ${isWrong ? "wrong" : ""}`} aria-label={`Answer ${choice}`}>
-                  <kbd>{index + 1}</kbd><span>{choice}</span>{isCorrect && <i>✓</i>}{isWrong && <i>×</i>}
-                </button>;
-              })}
-            </div>
-            <p className={`feedback ${selected === question.answer ? "yay" : ""}`}>{feedback}</p>
-          </> : <div className="finish-panel">
-            <div className="finish-animals">🦁 🦒 🐘</div><span className="finish-kicker">EXPEDITION COMPLETE!</span>
-            <h1>{score >= 10 ? "Legendary explorer!" : score >= 7 ? "Wild work!" : "Great adventure!"}</h1>
-            <p>You solved <strong>{score} of {ROUND_LENGTH}</strong> and collected <strong>{score} new stars</strong>.</p>
-            <div className="finish-score"><span>⭐</span><strong>{score}</strong><small>RIGHT</small></div>
-            <button className="again-button" onClick={() => changeTable(table)}>PLAY AGAIN <span>→</span></button>
-            <button className="switch-button" onClick={() => changeTable(null)}>Try Safari Mix</button>
-          </div>}
-        </section>
-
-        <aside className="animal-card">
-          <div className="animal-heading"><div><small>YOUR SAFARI CREW</small><strong>{unlocked} of {animals.length} friends</strong></div><span>🏕️</span></div>
-          <div className="animal-grid">{animals.map((animal, index) => {
-            const isUnlocked = index < unlocked;
-            return <div className={`animal-tile ${isUnlocked ? "unlocked" : "locked"}`} key={animal.name} style={{ "--animal": animal.color } as React.CSSProperties}>
-              <span>{isUnlocked ? animal.emoji : "?"}</span><small>{isUnlocked ? animal.name : `${Math.max(0, index * 4 - totalStars)} ⭐`}</small>
-            </div>;
-          })}</div>
-          <div className="unlock-meter"><div><span>NEXT FRIEND</span><strong>{unlocked === animals.length ? "Crew complete!" : `${4 - (totalStars % 4)} stars away`}</strong></div>
-            <div className="mini-track"><span style={{ width: unlocked === animals.length ? "100%" : `${(totalStars % 4) * 25}%` }} /></div></div>
-          <div className="tip-box"><span>💡</span><p><strong>Explorer tip</strong>Use the number keys 1–4 for lightning-fast answers.</p></div>
-        </aside>
-      </div>
-      <footer><span>Made with big roars for Serena</span><span>•</span><span>Every mistake makes your brain stronger 💪</span></footer>
     </main>
   );
 }
