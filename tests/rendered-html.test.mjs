@@ -64,7 +64,9 @@ test("anchors each rotating guide above the question card", async () => {
   assert.match(css, /\.animal-guide \{[\s\S]*top: auto;[\s\S]*left: 50%;[\s\S]*bottom: calc\(100% - 18px\);/);
   assert.match(css, /transform: translateX\(-50%\) translateZ\(55px\)/);
   assert.match(css, /\.equation \{[\s\S]*padding-left: 0;/);
-  assert.match(css, /\.animal-guide\.guide-leo,[\s\S]*\.animal-guide\.guide-gigi,[\s\S]*\.animal-guide\.guide-ziggy \{ bottom: calc\(100% - 26px\); \}/);
+  assert.match(css, /\.animal-guide\.guide-leo,[\s\S]*\.animal-guide\.guide-ziggy \{ bottom: calc\(100% - 26px\); \}/);
+  assert.match(css, /\.animal-guide\.guide-gigi \{ bottom: calc\(100% - 36px\); \}/);
+  assert.match(css, /\.animal-guide\.guide-mika \{ bottom: calc\(100% - 28px\); \}/);
 });
 
 test("makes the complete visible answer card the stable tap target", async () => {
@@ -74,6 +76,9 @@ test("makes the complete visible answer card the stable tap target", async () =>
   assert.match(css, /\.answer-grid button \{[\s\S]*display: grid;[\s\S]*touch-action: manipulation;/);
   assert.match(css, /\.answer-grid button > \* \{ pointer-events: none; \}/);
   assert.doesNotMatch(css, /button strong[^\n]*translateZ/);
+  assert.doesNotMatch(css, /\.answer-grid button:hover[^\{]*\{[^\}]*transform:/);
+  assert.doesNotMatch(css, /\.answer-grid button:active[^\{]*\{[^\}]*transform:/);
+  assert.match(css, /transition: box-shadow \.16s ease, background \.16s ease, border-color \.16s ease;/);
 });
 
 test("centers a compact completion card independently", async () => {
@@ -83,6 +88,7 @@ test("centers a compact completion card independently", async () => {
   assert.match(css, /\.finish-card \{[\s\S]*min-height: 360px;[\s\S]*margin: 170px auto 0;[\s\S]*padding: 44px 34px 30px;/);
   assert.match(css, /\.finish-guides \{[\s\S]*top: auto;[\s\S]*bottom: calc\(100% - 16px\);/);
   assert.match(css, /\.finish-guides img \{[\s\S]*bottom: 0;[\s\S]*animation: guideSway/);
+  assert.match(css, /\.finish-guides img:nth-child\(3\),[\s\S]*\.finish-guides img:nth-child\(5\) \{ bottom: -10px; \}/);
 });
 
 test("matches the compact translucent card concept", async () => {
