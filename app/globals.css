@@ -288,7 +288,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   position: absolute;
   z-index: 4;
   left: 50%;
-  bottom: calc(100% - 35px);
+  bottom: calc(100% - 45px);
   width: min(900px, 86vw);
   height: auto;
   max-height: 360px;
@@ -655,7 +655,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   .trail-picker > span:last-child { top: 9px; right: 16px; }
   .question-world { width: 100%; margin-top: 0; }
   .question-card { min-height: 555px; padding: 48px 13px 22px; border-radius: 28px; }
-  .boss-pride { bottom: calc(100% - 34px); width: min(520px, 96vw); }
+  .boss-pride { bottom: calc(100% - 44px); width: min(520px, 96vw); }
   .boss-hud { top: 10px; right: 13px; left: 13px; grid-template-columns: auto minmax(78px, 1fr) auto; gap: 7px; }
   .boss-label { font-size: 9px; letter-spacing: .1em; }
   .boss-label span { display: none; }

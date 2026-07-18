@@ -117,7 +117,7 @@ test("ships the extracted night scene and foreground boss art", async () => {
   assert.match(page, /<img className="boss-pride" src="\/assets\/safari\/boss-pride-trio\.webp"/);
   assert.doesNotMatch(page, /boss-scene-overlay|boss-battle-concept\.webp/);
   assert.doesNotMatch(css, /boss-scene-overlay|boss-battle-concept\.webp/);
-  assert.match(css, /\.boss-pride \{[\s\S]*position: absolute;[\s\S]*bottom: calc\(100% - 35px\);/);
+  assert.match(css, /\.boss-pride \{[\s\S]*position: absolute;[\s\S]*bottom: calc\(100% - 45px\);/);
   assert.match(css, /\.boss-health \{[\s\S]*grid-template-columns: repeat\(12, 1fr\)/);
   assert.match(css, /\.boss-card \{[\s\S]*rgba\(9, 30, 61, \.94\)/);
 });
@@ -150,6 +150,14 @@ test("keeps selected boss answers readable", async () => {
   assert.match(css, /\.boss-card \.answer-grid button\.correct strong \{ color: #164d31;/);
 });
 
+test("advances to the next question twice as fast", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /const DAY_ADVANCE_DELAY = 500;/);
+  assert.match(page, /const BOSS_ADVANCE_DELAY = 325;/);
+  assert.match(page, /isBossRound \? BOSS_ADVANCE_DELAY : DAY_ADVANCE_DELAY/);
+  assert.doesNotMatch(page, /isBossRound \? 650 : 1000/);
+});
+
 test("matches the compact translucent card concept", async () => {
   const css = await readFile(cssUrl, "utf8");
   assert.match(css, /\.question-card \{[\s\S]*min-height: 490px;/);
@@ -167,9 +175,13 @@ test("keeps wrong answers marked while allowing another try", async () => {
   assert.doesNotMatch(page, /You’ve got the next one!/);
 });
 
-test("includes opt-in CC0 safari music", async () => {
+test("starts level-specific music from the first answer gesture", async () => {
   const page = await readFile(pageUrl, "utf8");
-  assert.match(page, /\/audio\/jungle-marimba-loop\.ogg/);
+  assert.match(page, /const DAY_MUSIC_TRACK = "\/audio\/savanna\.mp3";/);
+  assert.match(page, /const BOSS_MUSIC_TRACK = "\/audio\/drum-circle-surge\.mp3";/);
+  assert.match(page, /const musicTrack = phase === "day" \? DAY_MUSIC_TRACK : BOSS_MUSIC_TRACK;/);
+  assert.match(page, /if \(!musicOn && !musicWasStartedRef\.current\) void startMusic\(\);/);
+  assert.match(page, /<audio ref=\{musicRef\} src=\{musicTrack\} loop preload="metadata" \/>/);
   assert.match(page, /Pause safari music/);
   assert.match(page, /music\.volume = 0\.24/);
 });

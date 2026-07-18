@@ -9,6 +9,10 @@ type GamePhase = "day" | "night-transition" | "boss" | "boss-won" | "boss-lost";
 
 const ROUND_LENGTH = 12;
 const BOSS_TIME_LIMIT = 60;
+const DAY_ADVANCE_DELAY = 500;
+const BOSS_ADVANCE_DELAY = 325;
+const DAY_MUSIC_TRACK = "/audio/savanna.mp3";
+const BOSS_MUSIC_TRACK = "/audio/drum-circle-surge.mp3";
 const MIN_FACTOR = 2;
 const MAX_FACTOR = 12;
 const INITIAL_QUESTION: Question = { a: 2, b: 2, answer: 4, choices: [4, 6, 8, 10] };
@@ -257,7 +261,9 @@ export default function Home() {
   const [missed, setMissed] = useState<{ a: number; b: number }[]>([]);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const musicRef = useRef<HTMLAudioElement>(null);
+  const musicWasStartedRef = useRef(false);
   const phaseRef = useRef<GamePhase>("day");
+  const musicTrack = phase === "day" ? DAY_MUSIC_TRACK : BOSS_MUSIC_TRACK;
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -305,6 +311,20 @@ export default function Home() {
 
   const guide = guides[round % guides.length];
 
+  const startMusic = useCallback(async () => {
+    const music = musicRef.current;
+    if (!music) return;
+    musicWasStartedRef.current = true;
+    music.volume = 0.24;
+    try {
+      await music.play();
+      setMusicOn(true);
+    } catch {
+      musicWasStartedRef.current = false;
+      setFeedback("Tap the music button to start the safari soundtrack.");
+    }
+  }, []);
+
   const playTone = useCallback((correct: boolean) => {
     if (!soundOn || typeof window === "undefined") return;
     try {
@@ -341,6 +361,7 @@ export default function Home() {
     const activePhase = phase;
     const isBossRound = activePhase === "boss";
     if ((activePhase !== "day" && !isBossRound) || selected !== null || wrongChoices.includes(choice) || (isBossRound && bossSecondsLeft <= 0)) return;
+    if (!musicOn && !musicWasStartedRef.current) void startMusic();
     const correct = choice === question.answer;
     playTone(correct);
     if (!correct) {
@@ -378,8 +399,8 @@ export default function Home() {
         else nextQuestion(table, question);
         setFeedback(isBossRound ? "Defeat the pride before time runs out!" : "Choose your answer!");
       }
-    }, isBossRound ? 650 : 1000);
-  }, [bossSecondsLeft, guide.cheer, nextQuestion, phase, playTone, question, round, selected, table, totalStars, wrongChoices]);
+    }, isBossRound ? BOSS_ADVANCE_DELAY : DAY_ADVANCE_DELAY);
+  }, [bossSecondsLeft, guide.cheer, musicOn, nextQuestion, phase, playTone, question, round, selected, startMusic, table, totalStars, wrongChoices]);
 
   const toggleMusic = useCallback(async () => {
     const music = musicRef.current;
@@ -389,14 +410,18 @@ export default function Home() {
       setMusicOn(false);
       return;
     }
-    music.volume = 0.24;
-    try {
-      await music.play();
-      setMusicOn(true);
-    } catch {
-      setFeedback("Tap the music button again to start the safari soundtrack.");
-    }
-  }, [musicOn]);
+    await startMusic();
+  }, [musicOn, startMusic]);
+
+  useEffect(() => {
+    const music = musicRef.current;
+    if (!music || !musicOn) return;
+    music.currentTime = 0;
+    void music.play().catch(() => {
+      musicWasStartedRef.current = false;
+      setMusicOn(false);
+    });
+  }, [musicOn, musicTrack]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -552,7 +577,7 @@ export default function Home() {
           <button type="button" className="mix-again" onClick={() => startRound(table)}>RETURN TO DAY</button>
         </section>}
       </section>
-      <audio ref={musicRef} src="/audio/jungle-marimba-loop.ogg" loop preload="metadata" />
+      <audio ref={musicRef} src={musicTrack} loop preload="metadata" />
     </main>
   );
 }
