@@ -29,12 +29,13 @@ const shuffle = <T,>(items: T[]) => {
 };
 
 const randomFactor = () => Math.floor(Math.random() * (MAX_FACTOR - MIN_FACTOR + 1)) + MIN_FACTOR;
+const questionKey = (a: number, b: number) => [a, b].sort((left, right) => left - right).join("x");
 
 function makeQuestion(table: number | null, avoid?: string): Question {
   let a = table ?? randomFactor();
   let b = randomFactor();
   let tries = 0;
-  while (`${a}x${b}` === avoid && tries < 12) {
+  while (questionKey(a, b) === avoid && tries < 12) {
     a = table ?? randomFactor();
     b = randomFactor();
     tries += 1;
@@ -243,15 +244,17 @@ export default function Home() {
   }, [soundOn]);
 
   const nextQuestion = useCallback((activeTable: number | null, previous: Question) => {
-    const retry = missed.length > 0 && Math.random() < 0.45 ? missed[0] : null;
+    const previousKey = questionKey(previous.a, previous.b);
+    const retryCandidate = missed.length > 0 && Math.random() < 0.45 ? missed[0] : null;
+    const retry = retryCandidate && questionKey(retryCandidate.a, retryCandidate.b) !== previousKey ? retryCandidate : null;
     if (retry) {
-      const retried = makeQuestion(retry.a, `${previous.a}x${previous.b}`);
+      const retried = makeQuestion(retry.a, previousKey);
       const answer = retry.a * retry.b;
       setQuestion({ ...retried, a: retry.a, b: retry.b, answer, choices: shuffle([answer, ...retried.choices.filter((choice) => choice !== answer)]).slice(0, 4) });
       setMissed((items) => items.slice(1));
       return;
     }
-    setQuestion(makeQuestion(activeTable, `${previous.a}x${previous.b}`));
+    setQuestion(makeQuestion(activeTable, previousKey));
   }, [missed]);
 
   const answerQuestion = useCallback((choice: number) => {

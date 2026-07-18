@@ -15,6 +15,14 @@ test("keeps every generated multiplication factor between 2 and 12", async () =>
   assert.doesNotMatch(page, /Math\.floor\(Math\.random\(\) \* 12\) \+ 1/);
 });
 
+test("prevents consecutive duplicate multiplication facts", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /const questionKey = \(a: number, b: number\) => \[a, b\]\.sort/);
+  assert.match(page, /questionKey\(a, b\) === avoid/);
+  assert.match(page, /questionKey\(retryCandidate\.a, retryCandidate\.b\) !== previousKey/);
+  assert.match(page, /makeQuestion\(activeTable, previousKey\)/);
+});
+
 test("uses deterministic first render data before randomizing in the browser", async () => {
   const page = await readFile(pageUrl, "utf8");
   assert.match(page, /const INITIAL_QUESTION: Question/);
@@ -54,6 +62,7 @@ test("matches the compact translucent card concept", async () => {
   assert.match(css, /rgba\(255, 255, 255, \.88\)/);
   assert.match(css, /backdrop-filter: blur\(9px\) saturate\(\.9\)/);
   assert.match(css, /\.answer-grid \{[\s\S]*gap: 18px;[\s\S]*margin: 0;/);
+  assert.match(css, /\.answer-grid \{[\s\S]*transform: none;/);
 });
 
 test("keeps wrong answers marked while allowing another try", async () => {
