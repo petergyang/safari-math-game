@@ -80,7 +80,9 @@ test("centers a compact completion card independently", async () => {
   const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
   assert.match(page, /game-stage \$\{finished \? "is-finished" : ""\}/);
   assert.match(css, /\.game-stage\.is-finished \{[\s\S]*justify-content: center;/);
-  assert.match(css, /\.finish-card \{[\s\S]*min-height: 420px;[\s\S]*padding: 142px 34px 30px;/);
+  assert.match(css, /\.finish-card \{[\s\S]*min-height: 360px;[\s\S]*margin: 170px auto 0;[\s\S]*padding: 44px 34px 30px;/);
+  assert.match(css, /\.finish-guides \{[\s\S]*top: auto;[\s\S]*bottom: calc\(100% - 16px\);/);
+  assert.match(css, /\.finish-guides img \{[\s\S]*bottom: 0;[\s\S]*animation: guideSway/);
 });
 
 test("matches the compact translucent card concept", async () => {
