@@ -116,6 +116,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 }
 .sound-button:hover { transform: translateY(-2px) rotate(3deg); background: rgba(14, 86, 63, .65); }
 .sound-button:active { transform: translateY(2px); }
+.music-button.active { border-color: rgba(255, 214, 107, .72); background: rgba(20, 109, 76, .72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 18px rgba(255, 205, 72, .25); }
 
 .game-stage {
   position: relative;
@@ -133,12 +134,13 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   position: absolute;
   z-index: 8;
   top: 28px;
-  left: 50%;
+  left: auto;
+  right: max(0px, calc((100% - 1040px) / 2));
   min-width: 142px;
   height: 58px;
   display: flex;
   align-items: center;
-  transform: translateX(-50%) perspective(240px) rotateX(4deg);
+  transform: perspective(240px) rotateX(4deg);
   border: 3px solid rgba(171, 137, 62, .4);
   border-radius: 17px;
   background: linear-gradient(180deg, #fffdf5, #fff2ce);
@@ -164,15 +166,15 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   --tilt-y: 0deg;
   position: relative;
   width: min(1040px, 100%);
-  margin: 0 auto;
+  margin: 140px auto 0;
   perspective: 1300px;
 }
 
 .question-card {
   position: relative;
   z-index: 2;
-  min-height: 545px;
-  padding: 40px clamp(28px, 5vw, 72px) 27px;
+  min-height: 560px;
+  padding: 105px clamp(28px, 5vw, 72px) 27px;
   overflow: visible;
   border: 3px solid rgba(148, 109, 38, .31);
   border-radius: 37px;
@@ -202,23 +204,24 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 
 .animal-guide {
   position: absolute;
-  z-index: 3;
-  left: clamp(-106px, -8vw, -74px);
-  bottom: 148px;
-  width: clamp(225px, 24vw, 320px);
+  z-index: 4;
+  top: auto;
+  left: 50%;
+  bottom: calc(100% - 18px);
+  width: clamp(205px, 18vw, 240px);
   height: auto;
-  max-height: 420px;
+  max-height: 250px;
   object-fit: contain;
   object-position: center bottom;
   pointer-events: none;
   filter: drop-shadow(0 15px 10px rgba(43, 34, 15, .18));
-  transform: translateZ(55px) rotate(-2deg);
+  transform: translateX(-50%) translateZ(55px) rotate(-1deg);
   animation: guideEnter .55s cubic-bezier(.2, .9, .28, 1.18), guideFloat 3.8s ease-in-out .55s infinite;
 }
-.guide-bubbles { width: clamp(245px, 27vw, 350px); }
-.guide-gigi { width: clamp(205px, 22vw, 285px); bottom: 144px; }
-.guide-ziggy { width: clamp(225px, 24vw, 310px); }
-.guide-mika { width: clamp(215px, 23vw, 300px); }
+.guide-bubbles { width: clamp(245px, 23vw, 295px); }
+.guide-gigi { width: clamp(215px, 20vw, 255px); }
+.guide-ziggy { width: clamp(230px, 21vw, 270px); }
+.guide-mika { width: clamp(225px, 21vw, 265px); }
 
 .question-count {
   position: relative;
@@ -235,12 +238,12 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 .equation {
   position: relative;
   z-index: 2;
-  min-height: 230px;
+  min-height: 190px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: clamp(20px, 3.8vw, 50px);
-  padding-left: clamp(80px, 12vw, 145px);
+  padding-left: 0;
   transform: translateZ(28px);
   font-size: clamp(76px, 10.2vw, 142px);
   line-height: 1;
@@ -318,6 +321,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 .answer-grid button.wrong { border-color: #e46949; background: linear-gradient(145deg, #fff9f4, #ffe0d4); box-shadow: inset 0 0 0 2px white, 0 9px 0 #bd5037; animation: wrongShake .4s ease; }
 .answer-grid button.wrong .answer-mark { background: #e46949; }
 .answer-grid button:disabled { cursor: default; }
+.answer-grid button.wrong:disabled { opacity: .72; }
 
 .feedback {
   position: relative;
@@ -371,7 +375,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 .is-celebrating .safari-background { filter: saturate(1.12) brightness(1.04); }
 
 @keyframes backgroundBreathe { from { transform: scale(1.025); } to { transform: scale(1.055); } }
-@keyframes guideEnter { from { opacity: 0; transform: translateZ(55px) translateX(-35px) rotate(-8deg) scale(.82); } to { opacity: 1; transform: translateZ(55px) translateX(0) rotate(-2deg) scale(1); } }
+@keyframes guideEnter { from { opacity: 0; transform: translateX(-50%) translateZ(55px) translateY(28px) rotate(-7deg) scale(.82); } to { opacity: 1; transform: translateX(-50%) translateZ(55px) translateY(0) rotate(-1deg) scale(1); } }
 @keyframes guideFloat { 0%, 100% { translate: 0 0; rotate: -1deg; } 50% { translate: 0 -8px; rotate: 1deg; } }
 @keyframes correctPop { 0% { transform: scale(.88); } 55% { transform: translateY(-7px) scale(1.08); } 100% { transform: scale(1); } }
 @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 28% { transform: translateX(-9px) rotate(-1deg); } 62% { transform: translateX(9px) rotate(1deg); } }
@@ -381,10 +385,11 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 980px) {
   .brand em { display: block; margin-top: 2px; }
   .game-stage { width: min(900px, calc(100% - 24px)); padding-top: 76px; }
-  .question-world { width: calc(100% - 36px); }
-  .question-card { min-height: 520px; padding-left: 35px; padding-right: 35px; }
-  .animal-guide { left: -60px; bottom: 146px; width: 245px; }
-  .equation { padding-left: 125px; gap: 30px; font-size: clamp(75px, 13vw, 122px); }
+  .trail-picker { right: 18px; }
+  .question-world { width: calc(100% - 36px); margin-top: 135px; }
+  .question-card { min-height: 540px; padding: 98px 35px 27px; }
+  .animal-guide { top: auto; left: 50%; bottom: calc(100% - 18px); width: 220px; max-height: 235px; }
+  .equation { min-height: 185px; padding-left: 0; gap: 30px; font-size: clamp(75px, 13vw, 122px); }
   .answer-grid { margin: 0 -22px; }
 }
 
@@ -401,16 +406,16 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   .hud-pill small { display: none; }
   .sound-button { width: 45px; height: 45px; border-radius: 13px; font-size: 20px; }
   .game-stage { min-height: calc(100svh - 75px); width: calc(100% - 16px); padding: 74px 0 24px; }
-  .trail-picker { top: 17px; height: 48px; min-width: 124px; border-radius: 14px; }
+  .trail-picker { top: 17px; right: auto; left: 0; height: 48px; min-width: 124px; border-radius: 14px; }
   .trail-picker select { padding-left: 23px; }
   .trail-picker > span:last-child { top: 9px; right: 16px; }
-  .question-world { width: 100%; }
-  .question-card { min-height: 610px; padding: 28px 13px 22px; border-radius: 28px; }
+  .question-world { width: 100%; margin-top: 98px; }
+  .question-card { min-height: 590px; padding: 88px 13px 22px; border-radius: 28px; }
   .question-count { font-size: 11px; }
   .question-count::before, .question-count::after { margin: 0 7px; }
-  .animal-guide { left: 50%; bottom: auto; top: 61px; width: 155px; height: 160px; transform: translateX(-50%) translateZ(55px); animation-name: guideFloat; }
-  .guide-gigi { width: 138px; }
-  .equation { min-height: 270px; padding: 130px 0 0; gap: 16px; font-size: clamp(64px, 22vw, 96px); }
+  .animal-guide { top: auto; left: 50%; bottom: calc(100% - 18px); width: 155px; height: auto; max-height: 165px; transform: translateX(-50%) translateZ(55px); }
+  .guide-gigi { width: 142px; }
+  .equation { min-height: 180px; padding: 0; gap: 16px; font-size: clamp(64px, 22vw, 96px); }
   .answer-grid { grid-template-columns: repeat(2, 1fr); gap: 11px; margin: 0; transform: translateZ(45px); }
   .answer-grid button { min-height: 102px; border-radius: 21px; }
   .answer-grid button strong { font-size: 43px; }

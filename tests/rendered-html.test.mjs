@@ -15,6 +15,13 @@ test("keeps every generated multiplication factor between 2 and 12", async () =>
   assert.doesNotMatch(page, /Math\.floor\(Math\.random\(\) \* 12\) \+ 1/);
 });
 
+test("uses deterministic first render data before randomizing in the browser", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /const INITIAL_QUESTION: Question/);
+  assert.match(page, /useState<Question>\(INITIAL_QUESTION\)/);
+  assert.match(page, /requestAnimationFrame\(\(\) => \{/);
+});
+
 test("uses the complete rotating safari guide crew", async () => {
   const page = await readFile(pageUrl, "utf8");
   for (const guide of ["lion", "elephant", "giraffe", "zebra", "meerkat"]) {
@@ -32,6 +39,28 @@ test("includes real WebGL effects with an accessible reduced-motion fallback", a
   assert.match(css, /perspective: 1300px/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.safari-webgl \{ display: none;/);
+});
+
+test("anchors each rotating guide above the question card", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.match(css, /\.animal-guide \{[\s\S]*top: auto;[\s\S]*left: 50%;[\s\S]*bottom: calc\(100% - 18px\);/);
+  assert.match(css, /transform: translateX\(-50%\) translateZ\(55px\)/);
+  assert.match(css, /\.equation \{[\s\S]*padding-left: 0;/);
+});
+
+test("keeps wrong answers marked while allowing another try", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /setWrongChoices\(\(choices\) => \[\.\.\.choices, choice\]\)/);
+  assert.match(page, /Not quite — try another answer!/);
+  assert.match(page, /disabled=\{selected !== null \|\| isWrong\}/);
+  assert.doesNotMatch(page, /You’ve got the next one!/);
+});
+
+test("includes opt-in CC0 safari music", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /\/audio\/jungle-marimba-loop\.ogg/);
+  assert.match(page, /Pause safari music/);
+  assert.match(page, /music\.volume = 0\.24/);
 });
 
 test("ships game-specific metadata and the immersive background", async () => {

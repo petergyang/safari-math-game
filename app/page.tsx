@@ -9,6 +9,7 @@ type Guide = { name: string; image: string; cheer: string };
 const ROUND_LENGTH = 12;
 const MIN_FACTOR = 2;
 const MAX_FACTOR = 12;
+const INITIAL_QUESTION: Question = { a: 2, b: 2, answer: 4, choices: [4, 6, 8, 10] };
 
 const guides: Guide[] = [
   { name: "Leo", image: "/assets/safari/guide-lion.webp", cheer: "Roar-some!" },
@@ -193,22 +194,28 @@ function SafariWebGL({ celebrate }: { celebrate: boolean }) {
 
 export default function Home() {
   const [table, setTable] = useState<number | null>(null);
-  const [question, setQuestion] = useState<Question>(() => makeQuestion(null));
+  const [question, setQuestion] = useState<Question>(INITIAL_QUESTION);
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [totalStars, setTotalStars] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [wrongChoices, setWrongChoices] = useState<number[]>([]);
   const [feedback, setFeedback] = useState("Choose your answer!");
   const [celebrate, setCelebrate] = useState(false);
   const [finished, setFinished] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(false);
   const [missed, setMissed] = useState<{ a: number; b: number }[]>([]);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const musicRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setTotalStars(loadNumber("serena-stars")));
+    const frame = requestAnimationFrame(() => {
+      setTotalStars(loadNumber("serena-stars"));
+      setQuestion(makeQuestion(null));
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
@@ -248,28 +255,33 @@ export default function Home() {
   }, [missed]);
 
   const answerQuestion = useCallback((choice: number) => {
-    if (selected !== null || finished) return;
+    if (selected !== null || finished || wrongChoices.includes(choice)) return;
     const correct = choice === question.answer;
-    setSelected(choice);
     playTone(correct);
-    if (correct) {
-      const nextStars = totalStars + 1;
-      setScore((value) => value + 1);
-      setStreak((value) => value + 1);
-      setTotalStars(nextStars);
-      setCelebrate(true);
-      setFeedback(`${guide.cheer} ${question.a} × ${question.b} = ${question.answer}`);
-      window.localStorage.setItem("serena-stars", String(nextStars));
-    } else {
+    if (!correct) {
+      setWrongChoices((choices) => [...choices, choice]);
       setStreak(0);
-      setFeedback(`${question.a} × ${question.b} = ${question.answer}. You’ve got the next one!`);
-      setMissed((items) => [...items, { a: question.a, b: question.b }]);
+      setFeedback("Not quite — try another answer!");
+      if (wrongChoices.length === 0) {
+        setMissed((items) => [...items, { a: question.a, b: question.b }]);
+      }
+      return;
     }
+
+    setSelected(choice);
+    const nextStars = totalStars + 1;
+    if (wrongChoices.length === 0) setScore((value) => value + 1);
+    setStreak((value) => value + 1);
+    setTotalStars(nextStars);
+    setCelebrate(true);
+    setFeedback(`${guide.cheer} ${question.a} × ${question.b} = ${question.answer}`);
+    window.localStorage.setItem("serena-stars", String(nextStars));
 
     const nextRound = round + 1;
     advanceTimer.current = setTimeout(() => {
       setCelebrate(false);
       setSelected(null);
+      setWrongChoices([]);
       if (nextRound >= ROUND_LENGTH) {
         setRound(nextRound);
         setFinished(true);
@@ -278,8 +290,25 @@ export default function Home() {
         nextQuestion(table, question);
         setFeedback("Choose your answer!");
       }
-    }, correct ? 1000 : 1550);
-  }, [finished, guide.cheer, nextQuestion, playTone, question, round, selected, table, totalStars]);
+    }, 1000);
+  }, [finished, guide.cheer, nextQuestion, playTone, question, round, selected, table, totalStars, wrongChoices]);
+
+  const toggleMusic = useCallback(async () => {
+    const music = musicRef.current;
+    if (!music) return;
+    if (musicOn) {
+      music.pause();
+      setMusicOn(false);
+      return;
+    }
+    music.volume = 0.24;
+    try {
+      await music.play();
+      setMusicOn(true);
+    } catch {
+      setFeedback("Tap the music button again to start the safari soundtrack.");
+    }
+  }, [musicOn]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -298,6 +327,7 @@ export default function Home() {
     setScore(0);
     setStreak(0);
     setSelected(null);
+    setWrongChoices([]);
     setFinished(false);
     setCelebrate(false);
     setMissed([]);
@@ -329,6 +359,7 @@ export default function Home() {
         <div className="game-stats">
           <div className="hud-pill"><span aria-hidden="true">⭐</span><strong>{totalStars}</strong><small>STARS</small></div>
           <div className="hud-pill streak"><span aria-hidden="true">🔥</span><strong>{streak}</strong><small>STREAK</small></div>
+          <button className={`sound-button music-button ${musicOn ? "active" : ""}`} type="button" onClick={toggleMusic} aria-label={musicOn ? "Pause safari music" : "Play safari music"}>{musicOn ? "🎵" : "🎶"}</button>
           <button className="sound-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"}>{soundOn ? "🔊" : "🔇"}</button>
         </div>
       </header>
@@ -358,14 +389,14 @@ export default function Home() {
               </div>
               <div className="answer-grid" role="group" aria-label="Answer choices">
                 {question.choices.map((choice, index) => {
-                  const isCorrect = selected !== null && choice === question.answer;
-                  const isWrong = selected === choice && choice !== question.answer;
+                  const isCorrect = selected === choice && choice === question.answer;
+                  const isWrong = wrongChoices.includes(choice);
                   return (
                     <button
                       type="button"
                       key={`${question.a}-${question.b}-${choice}`}
                       onClick={() => answerQuestion(choice)}
-                      disabled={selected !== null}
+                      disabled={selected !== null || isWrong}
                       className={`${isCorrect ? "correct" : ""} ${isWrong ? "wrong" : ""}`}
                       aria-label={`Answer ${choice}`}
                     >
@@ -389,12 +420,13 @@ export default function Home() {
             </div>
             <span>EXPEDITION COMPLETE</span>
             <h1>{score >= 10 ? "Safari superstar!" : score >= 7 ? "Wild work!" : "Great exploring!"}</h1>
-            <p>You answered <strong>{score} of {ROUND_LENGTH}</strong> correctly.</p>
+            <p>You solved every question, with <strong>{score} of {ROUND_LENGTH}</strong> right on the first try.</p>
             <button type="button" onClick={() => startRound(table)}>PLAY AGAIN</button>
             {table !== null && <button type="button" className="mix-again" onClick={() => startRound(null)}>TRY SAFARI MIX</button>}
           </section>
         )}
       </section>
+      <audio ref={musicRef} src="/audio/jungle-marimba-loop.ogg" loop preload="metadata" />
     </main>
   );
 }
