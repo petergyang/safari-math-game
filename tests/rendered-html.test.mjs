@@ -43,9 +43,17 @@ test("includes real WebGL effects with an accessible reduced-motion fallback", a
 
 test("anchors each rotating guide above the question card", async () => {
   const css = await readFile(cssUrl, "utf8");
-  assert.match(css, /\.animal-guide \{[\s\S]*top: auto;[\s\S]*left: 50%;[\s\S]*bottom: calc\(100% - 18px\);/);
+  assert.match(css, /\.animal-guide \{[\s\S]*top: auto;[\s\S]*left: 50%;[\s\S]*bottom: calc\(100% - 12px\);/);
   assert.match(css, /transform: translateX\(-50%\) translateZ\(55px\)/);
   assert.match(css, /\.equation \{[\s\S]*padding-left: 0;/);
+});
+
+test("matches the compact translucent card concept", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.match(css, /\.question-card \{[\s\S]*min-height: 490px;/);
+  assert.match(css, /rgba\(255, 255, 255, \.88\)/);
+  assert.match(css, /backdrop-filter: blur\(9px\) saturate\(\.9\)/);
+  assert.match(css, /\.answer-grid \{[\s\S]*gap: 18px;[\s\S]*margin: 0;/);
 });
 
 test("keeps wrong answers marked while allowing another try", async () => {
