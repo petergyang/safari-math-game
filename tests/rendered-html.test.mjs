@@ -95,21 +95,52 @@ test("centers a compact completion card independently", async () => {
 
 test("unlocks a timed twelve-question night boss level after level one", async () => {
   const page = await readFile(pageUrl, "utf8");
-  assert.match(page, /type GamePhase = "day" \| "day-complete" \| "boss" \| "boss-won" \| "boss-lost";/);
+  assert.match(page, /type GamePhase = "day" \| "night-transition" \| "boss" \| "boss-won" \| "boss-lost";/);
   assert.match(page, /const BOSS_TIME_LIMIT = 60;/);
-  assert.match(page, /setPhase\(isBossRound \? "boss-won" : "day-complete"\)/);
+  assert.match(page, /setPhase\(isBossRound \? "boss-won" : "night-transition"\)/);
+  assert.match(page, /if \(phase !== "night-transition"\) return;[\s\S]*}, 1700\);/);
+  assert.match(page, /setPhase\("boss"\)/);
   assert.match(page, /secondsRemaining -= 1;[\s\S]*setBossSecondsLeft\(secondsRemaining\)/);
-  assert.match(page, /ENTER NIGHT BATTLE/);
+  assert.match(page, /You ran out of time to beat the pride!/);
   assert.match(page, /Defeat the pride before time runs out!/);
   assert.match(page, /TRY BOSS AGAIN/);
 });
 
-test("ships the extracted night scene and boss art", async () => {
-  const css = await readFile(cssUrl, "utf8");
+test("ships the extracted night scene and foreground boss art", async () => {
+  const [page, css, asset] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(cssUrl, "utf8"),
+    readFile(new URL("../public/assets/safari/boss-pride.webp", import.meta.url)),
+  ]);
+  assert.ok(asset.length > 10_000);
   assert.match(css, /background-moonlit-boss\.webp/);
-  assert.match(css, /boss-battle-concept\.webp/);
+  assert.match(page, /<img className="boss-pride" src="\/assets\/safari\/boss-pride\.webp"/);
+  assert.doesNotMatch(page, /boss-scene-overlay|boss-battle-concept\.webp/);
+  assert.doesNotMatch(css, /boss-scene-overlay|boss-battle-concept\.webp/);
+  assert.match(css, /\.boss-pride \{[\s\S]*position: absolute;[\s\S]*bottom: calc\(100% - 5px\);/);
   assert.match(css, /\.boss-health \{[\s\S]*grid-template-columns: repeat\(12, 1fr\)/);
   assert.match(css, /\.boss-card \{[\s\S]*rgba\(9, 30, 61, \.94\)/);
+});
+
+test("keeps day and boss gameplay geometry identical", async () => {
+  const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
+  assert.match(page, /\(phase === "day" \|\| phase === "boss"\) && <label className="trail-picker">/);
+  assert.match(css, /\.question-world \{[\s\S]*width: min\(1080px, 100%\);/);
+  assert.match(css, /\.boss-world \{ width: min\(1080px, 100%\); \}/);
+  const bossCard = css.match(/\.boss-card \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.doesNotMatch(bossCard, /min-height|padding/);
+  assert.doesNotMatch(css, /\.game-stage\.is-boss/);
+  assert.doesNotMatch(css, /\.boss-card \.equation \{[^}]*min-height/);
+  assert.doesNotMatch(css, /\.boss-card \.answer-grid button \{[^}]*min-height/);
+});
+
+test("makes the night battle visibly fiery", async () => {
+  const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
+  assert.match(page, /boss-fire-stage/);
+  assert.match(page, /boss-flame boss-flame-left/);
+  assert.match(page, /boss-flame boss-flame-right/);
+  assert.match(css, /@keyframes flameDance/);
+  assert.match(css, /drop-shadow\(0 0 55px rgba\(255, 38, 0, \.42\)\)/);
 });
 
 test("matches the compact translucent card concept", async () => {

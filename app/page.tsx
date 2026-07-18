@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Question = { a: number; b: number; answer: number; choices: number[] };
 type Guide = { name: string; image: string; cheer: string };
-type GamePhase = "day" | "day-complete" | "boss" | "boss-won" | "boss-lost";
+type GamePhase = "day" | "night-transition" | "boss" | "boss-won" | "boss-lost";
 
 const ROUND_LENGTH = 12;
 const BOSS_TIME_LIMIT = 60;
@@ -110,17 +110,22 @@ function SafariWebGL({ celebrate, night }: { celebrate: boolean; night: boolean 
       uniform float u_night;
       varying float v_alpha;
       varying float v_heat;
+      varying float v_life;
       void main() {
         float drift = sin(u_time * 0.00045 + a_phase) * 0.035;
         vec2 dayPos = a_position + vec2(drift + u_pointer.x * 0.018, cos(u_time * 0.00032 + a_phase) * 0.025 + u_pointer.y * 0.012);
-        float climb = mod((a_position.y + 1.0) + u_time * (0.00012 + fract(a_phase) * 0.000035), 2.0) - 1.0;
-        vec2 firePos = vec2(a_position.x + sin(u_time * 0.0011 + a_phase) * 0.055 + u_pointer.x * 0.012, climb);
+        float life = mod((a_position.y + 1.0) + u_time * (0.00022 + fract(a_phase) * 0.00007), 0.92);
+        float climb = -1.03 + life;
+        float sway = sin(u_time * 0.0017 + a_phase * 2.0) * (0.025 + life * 0.075);
+        vec2 firePos = vec2(a_position.x + sway + u_pointer.x * 0.01, climb);
         vec2 pos = mix(dayPos, firePos, u_night);
         pos *= 1.0 + u_burst * 0.12;
         gl_Position = vec4(pos, 0.0, 1.0);
-        gl_PointSize = a_size * (1.0 + u_burst * 1.8 + u_night * 0.75);
+        float fireScale = 1.75 - life * 1.05;
+        gl_PointSize = mix(a_size * (1.0 + u_burst * 1.8), a_size * fireScale, u_night);
         v_alpha = mix(0.34 + 0.42 * sin(u_time * 0.001 + a_phase), 0.55 + 0.35 * sin(u_time * 0.0015 + a_phase), u_night);
         v_heat = u_night;
+        v_life = life;
       }
     `;
     const fragmentSource = `
@@ -128,13 +133,18 @@ function SafariWebGL({ celebrate, night }: { celebrate: boolean; night: boolean 
       uniform float u_burst;
       varying float v_alpha;
       varying float v_heat;
+      varying float v_life;
       void main() {
         vec2 point = gl_PointCoord - vec2(0.5);
         float distanceFromCenter = length(point);
-        float glow = smoothstep(0.5, 0.0, distanceFromCenter);
+        float flameDistance = length(vec2(point.x * 1.18, point.y * 0.72));
+        float glow = mix(smoothstep(0.5, 0.0, distanceFromCenter), smoothstep(0.52, 0.0, flameDistance), v_heat);
         vec3 gold = mix(vec3(1.0, 0.72, 0.16), vec3(1.0, 0.96, 0.56), glow);
-        vec3 fire = mix(vec3(1.0, 0.16, 0.025), vec3(1.0, 0.88, 0.22), glow);
-        gl_FragColor = vec4(mix(gold, fire, v_heat), glow * (v_alpha + u_burst * 0.45));
+        vec3 ember = vec3(1.0, 0.12, 0.015);
+        vec3 hot = vec3(1.0, 0.94, 0.34);
+        vec3 fire = mix(ember, hot, clamp(glow * 1.25 + (1.0 - v_life) * 0.24, 0.0, 1.0));
+        float fireAlpha = glow * v_alpha * (1.0 - v_life * 0.34);
+        gl_FragColor = vec4(mix(gold, fire, v_heat), mix(glow * (v_alpha + u_burst * 0.45), fireAlpha, v_heat));
       }
     `;
 
@@ -159,9 +169,10 @@ function SafariWebGL({ celebrate, night }: { celebrate: boolean; night: boolean 
     const particleCount = night ? 112 : 54;
     const data = new Float32Array(particleCount * 4);
     for (let index = 0; index < particleCount; index += 1) {
-      data[index * 4] = Math.random() * 2 - 1;
-      data[index * 4 + 1] = Math.random() * 1.5 - 0.75;
-      data[index * 4 + 2] = 4 + Math.random() * 9;
+      const fireSide = index % 2 === 0 ? -0.77 : 0.77;
+      data[index * 4] = night ? fireSide + (Math.random() - 0.5) * 0.38 : Math.random() * 2 - 1;
+      data[index * 4 + 1] = night ? -1 + Math.random() * 0.92 : Math.random() * 1.5 - 0.75;
+      data[index * 4 + 2] = night ? 18 + Math.random() * 34 : 4 + Math.random() * 9;
       data[index * 4 + 3] = Math.random() * Math.PI * 2;
     }
     const buffer = gl.createBuffer();
@@ -259,6 +270,23 @@ export default function Home() {
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   useEffect(() => {
+    if (phase !== "night-transition") return;
+    const transition = window.setTimeout(() => {
+      setQuestion(makeQuestion(table));
+      setRound(0);
+      setSelected(null);
+      setWrongChoices([]);
+      setBossSecondsLeft(BOSS_TIME_LIMIT);
+      setBossCleared(false);
+      setCelebrate(false);
+      setMissed([]);
+      setFeedback("Defeat the pride before time runs out!");
+      setPhase("boss");
+    }, 1700);
+    return () => window.clearTimeout(transition);
+  }, [phase, table]);
+
+  useEffect(() => {
     if (phase !== "boss" || bossCleared) return;
     let secondsRemaining = BOSS_TIME_LIMIT;
     const timer = window.setInterval(() => {
@@ -269,7 +297,7 @@ export default function Home() {
       if (advanceTimer.current) clearTimeout(advanceTimer.current);
       setSelected(null);
       setCelebrate(false);
-      setFeedback("Time’s up — the rival pride escaped!");
+      setFeedback("You ran out of time to beat the pride!");
       setPhase("boss-lost");
     }, 1000);
     return () => window.clearInterval(timer);
@@ -343,7 +371,7 @@ export default function Home() {
       setWrongChoices([]);
       if (nextRound >= ROUND_LENGTH) {
         setRound(nextRound);
-        setPhase(isBossRound ? "boss-won" : "day-complete");
+        setPhase(isBossRound ? "boss-won" : "night-transition");
       } else {
         setRound(nextRound);
         if (isBossRound) setQuestion(makeQuestion(table, questionKey(question.a, question.b)));
@@ -396,9 +424,10 @@ export default function Home() {
     setFeedback(nextTable ? `${nextTable}s trail ready!` : "Safari Mix ready!");
   };
 
-  const startBossBattle = () => {
+  const startBossBattle = (nextTable: number | null = table) => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    setQuestion(makeQuestion(table));
+    setTable(nextTable);
+    setQuestion(makeQuestion(nextTable));
     setRound(0);
     setSelected(null);
     setWrongChoices([]);
@@ -411,16 +440,18 @@ export default function Home() {
   };
 
   const progressDots = useMemo(() => Array.from({ length: ROUND_LENGTH }, (_, index) => index), []);
-  const isBossMode = phase === "boss" || phase === "boss-won" || phase === "boss-lost";
-  const isSummary = phase === "day-complete" || phase === "boss-won" || phase === "boss-lost";
+  const isBossMode = phase === "night-transition" || phase === "boss" || phase === "boss-won" || phase === "boss-lost";
+  const isSummary = phase === "boss-won" || phase === "boss-lost";
   const formattedBossTime = `00:${String(bossSecondsLeft).padStart(2, "0")}`;
 
   return (
     <main className={`safari-game ${celebrate ? "is-celebrating" : ""} ${isBossMode ? "is-night" : ""}`}>
       <div className="safari-background" aria-hidden="true" />
-      {(phase === "boss" || phase === "boss-lost") && <div className="boss-scene-overlay" aria-hidden="true" />}
       <div className="safari-vignette" aria-hidden="true" />
-      {isBossMode && <><div className="fire-glow fire-glow-left" aria-hidden="true" /><div className="fire-glow fire-glow-right" aria-hidden="true" /></>}
+      {isBossMode && <div className="boss-fire-stage" aria-hidden="true">
+        <div className="boss-flame boss-flame-left"><i /><i /><i /></div>
+        <div className="boss-flame boss-flame-right"><i /><i /><i /></div>
+      </div>}
       <SafariWebGL celebrate={celebrate} night={isBossMode} />
 
       <header className="game-header">
@@ -437,9 +468,13 @@ export default function Home() {
       </header>
 
       <section className={`game-stage ${isSummary ? "is-finished" : ""} ${phase === "boss" ? "is-boss" : ""}`} aria-live="polite">
-        {phase === "day" && <label className="trail-picker">
+        {(phase === "day" || phase === "boss") && <label className="trail-picker">
           <span className="sr-only">Choose a multiplication table</span>
-          <select value={table ?? "mix"} onChange={(event) => startRound(event.target.value === "mix" ? null : Number(event.target.value))}>
+          <select value={table ?? "mix"} onChange={(event) => {
+            const nextTable = event.target.value === "mix" ? null : Number(event.target.value);
+            if (phase === "boss") startBossBattle(nextTable);
+            else startRound(nextTable);
+          }}>
             <option value="mix">MIX</option>
             {Array.from({ length: 11 }, (_, index) => index + 2).map((value) => <option value={value} key={value}>{value}s</option>)}
           </select>
@@ -449,13 +484,14 @@ export default function Home() {
         {(phase === "day" || phase === "boss") && (
           <section className={`question-world ${phase === "boss" ? "boss-world" : ""}`}>
             {phase === "day" && <img className={`animal-guide guide-${guide.name.toLowerCase()}`} src={guide.image} alt={`${guide.name}, your safari guide`} />}
+            {phase === "boss" && <img className="boss-pride" src="/assets/safari/boss-pride.webp" alt="The rival lion and his three hyena teammates" />}
             <div className={`question-card ${phase === "boss" ? "boss-card" : ""}`}>
               {phase === "boss" && <div className="boss-hud">
                 <div className="boss-label"><span aria-hidden="true">🔥</span> BOSS BATTLE <span aria-hidden="true">🔥</span></div>
-                <div className={`boss-timer ${bossSecondsLeft <= 15 ? "urgent" : ""}`} aria-label={`${bossSecondsLeft} seconds remaining`}>{formattedBossTime}</div>
                 <div className="boss-health" aria-label={`${round} of ${ROUND_LENGTH} boss energy segments cleared`}>
                   {progressDots.map((index) => <span key={index} className={index < round ? "cleared" : ""} />)}
                 </div>
+                <div className={`boss-timer ${bossSecondsLeft <= 15 ? "urgent" : ""}`} aria-label={`${bossSecondsLeft} seconds remaining`}>{formattedBossTime}</div>
               </div>}
               <div className="question-count">QUESTION {round + 1} OF {ROUND_LENGTH}</div>
               <div className="equation" aria-label={`${question.a} times ${question.b}`}>
@@ -489,16 +525,13 @@ export default function Home() {
           </section>
         )}
 
-        {phase === "day-complete" && <section className="finish-card level-complete-card">
-            <div className="finish-guides" aria-hidden="true">
-              {guides.map((animal) => <img src={animal.image} alt="" key={animal.name} />)}
-            </div>
-            <span>LEVEL ONE COMPLETE</span>
-            <h1>{score >= 10 ? "Safari superstar!" : score >= 7 ? "Wild work!" : "Great exploring!"}</h1>
-            <p>You solved every question, with <strong>{score} of {ROUND_LENGTH}</strong> right on the first try.</p>
-            <button type="button" onClick={startBossBattle}>ENTER NIGHT BATTLE</button>
-            <button type="button" className="mix-again" onClick={() => startRound(table)}>REPLAY DAY TRAIL</button>
-          </section>}
+        {phase === "night-transition" && <section className="night-transition-card" aria-label="Level one complete. Night boss battle beginning.">
+          <span>LEVEL ONE COMPLETE</span>
+          <strong>{score} / {ROUND_LENGTH} FIRST TRY</strong>
+          <h1>Night is falling…</h1>
+          <p>Boss battle begins now.</p>
+          <div className="transition-flame" aria-hidden="true">🔥</div>
+        </section>}
 
         {phase === "boss-won" && <section className="finish-card boss-result-card victory">
           <div className="finish-guides" aria-hidden="true">
@@ -508,14 +541,14 @@ export default function Home() {
           <h1>Boss defeated!</h1>
           <p>You cleared all <strong>{ROUND_LENGTH} questions</strong> with <strong>{bossSecondsLeft} seconds</strong> left.</p>
           <button type="button" onClick={() => startRound(table)}>NEW EXPEDITION</button>
-          <button type="button" className="mix-again" onClick={startBossBattle}>REMATCH THE PRIDE</button>
+          <button type="button" className="mix-again" onClick={() => startBossBattle()}>REMATCH THE PRIDE</button>
         </section>}
 
         {phase === "boss-lost" && <section className="finish-card boss-result-card defeat">
           <span>TIME’S UP</span>
-          <h1>The pride escaped!</h1>
+          <h1>You ran out of time to beat the pride!</h1>
           <p>You cleared <strong>{round} of {ROUND_LENGTH}</strong> questions. The boss battle restarts without replaying level one.</p>
-          <button type="button" onClick={startBossBattle}>TRY BOSS AGAIN</button>
+          <button type="button" onClick={() => startBossBattle()}>TRY BOSS AGAIN</button>
           <button type="button" className="mix-again" onClick={() => startRound(table)}>RETURN TO DAY</button>
         </section>}
       </section>
