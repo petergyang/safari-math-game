@@ -110,14 +110,14 @@ test("ships the extracted night scene and foreground boss art", async () => {
   const [page, css, asset] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(cssUrl, "utf8"),
-    readFile(new URL("../public/assets/safari/boss-pride.webp", import.meta.url)),
+    readFile(new URL("../public/assets/safari/boss-pride-trio.webp", import.meta.url)),
   ]);
   assert.ok(asset.length > 10_000);
   assert.match(css, /background-moonlit-boss\.webp/);
-  assert.match(page, /<img className="boss-pride" src="\/assets\/safari\/boss-pride\.webp"/);
+  assert.match(page, /<img className="boss-pride" src="\/assets\/safari\/boss-pride-trio\.webp"/);
   assert.doesNotMatch(page, /boss-scene-overlay|boss-battle-concept\.webp/);
   assert.doesNotMatch(css, /boss-scene-overlay|boss-battle-concept\.webp/);
-  assert.match(css, /\.boss-pride \{[\s\S]*position: absolute;[\s\S]*bottom: calc\(100% - 5px\);/);
+  assert.match(css, /\.boss-pride \{[\s\S]*position: absolute;[\s\S]*bottom: calc\(100% - 35px\);/);
   assert.match(css, /\.boss-health \{[\s\S]*grid-template-columns: repeat\(12, 1fr\)/);
   assert.match(css, /\.boss-card \{[\s\S]*rgba\(9, 30, 61, \.94\)/);
 });
@@ -141,6 +141,13 @@ test("makes the night battle visibly fiery", async () => {
   assert.match(page, /boss-flame boss-flame-right/);
   assert.match(css, /@keyframes flameDance/);
   assert.match(css, /drop-shadow\(0 0 55px rgba\(255, 38, 0, \.42\)\)/);
+});
+
+test("keeps selected boss answers readable", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.match(css, /\.boss-card \.answer-grid button\.wrong \{[\s\S]*color: #651f14;[\s\S]*background: linear-gradient\(145deg, #fff5ed, #ffcfc0\);/);
+  assert.match(css, /\.boss-card \.answer-grid button\.wrong:disabled \{ opacity: 1; \}/);
+  assert.match(css, /\.boss-card \.answer-grid button\.correct strong \{ color: #164d31;/);
 });
 
 test("matches the compact translucent card concept", async () => {

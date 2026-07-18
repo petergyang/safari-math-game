@@ -484,7 +484,7 @@ export default function Home() {
         {(phase === "day" || phase === "boss") && (
           <section className={`question-world ${phase === "boss" ? "boss-world" : ""}`}>
             {phase === "day" && <img className={`animal-guide guide-${guide.name.toLowerCase()}`} src={guide.image} alt={`${guide.name}, your safari guide`} />}
-            {phase === "boss" && <img className="boss-pride" src="/assets/safari/boss-pride.webp" alt="The rival lion and his three hyena teammates" />}
+            {phase === "boss" && <img className="boss-pride" src="/assets/safari/boss-pride-trio.webp" alt="The rival lion and his two hyena teammates" />}
             <div className={`question-card ${phase === "boss" ? "boss-card" : ""}`}>
               {phase === "boss" && <div className="boss-hud">
                 <div className="boss-label"><span aria-hidden="true">🔥</span> BOSS BATTLE <span aria-hidden="true">🔥</span></div>
