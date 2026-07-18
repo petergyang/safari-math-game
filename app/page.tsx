@@ -31,16 +31,7 @@ const shuffle = <T,>(items: T[]) => {
 const randomFactor = () => Math.floor(Math.random() * (MAX_FACTOR - MIN_FACTOR + 1)) + MIN_FACTOR;
 const questionKey = (a: number, b: number) => [a, b].sort((left, right) => left - right).join("x");
 
-function makeQuestion(table: number | null, avoid?: string): Question {
-  let a = table ?? randomFactor();
-  let b = randomFactor();
-  let tries = 0;
-  while (questionKey(a, b) === avoid && tries < 12) {
-    a = table ?? randomFactor();
-    b = randomFactor();
-    tries += 1;
-  }
-
+function makeQuestionForFactors(a: number, b: number): Question {
   const answer = a * b;
   const candidates = shuffle([
     answer - a,
@@ -51,14 +42,45 @@ function makeQuestion(table: number | null, avoid?: string): Question {
     answer + 2,
     answer - 5,
     answer + 5,
+    answer - 1,
+    answer + 1,
+    answer - 3,
+    answer + 3,
   ]).filter((value) => value >= MIN_FACTOR * MIN_FACTOR && value <= MAX_FACTOR * MAX_FACTOR && value !== answer);
   const choices = new Set<number>([answer]);
   for (const candidate of candidates) {
     choices.add(candidate);
     if (choices.size === 4) break;
   }
-  while (choices.size < 4) choices.add(Math.max(4, Math.min(144, answer + choices.size * 3)));
+  for (let distance = 1; choices.size < 4 && distance <= 20; distance += 1) {
+    for (const candidate of [answer - distance, answer + distance]) {
+      if (candidate >= MIN_FACTOR * MIN_FACTOR && candidate <= MAX_FACTOR * MAX_FACTOR) choices.add(candidate);
+      if (choices.size === 4) break;
+    }
+  }
   return { a, b, answer, choices: shuffle([...choices]) };
+}
+
+function makeQuestion(table: number | null, avoid?: string): Question {
+  let a = table ?? randomFactor();
+  let b = randomFactor();
+  let tries = 0;
+  while (questionKey(a, b) === avoid && tries < 12) {
+    a = table ?? randomFactor();
+    b = randomFactor();
+    tries += 1;
+  }
+  if (questionKey(a, b) === avoid) {
+    for (let offset = 1; offset <= MAX_FACTOR - MIN_FACTOR + 1; offset += 1) {
+      const nextB = MIN_FACTOR + ((b - MIN_FACTOR + offset) % (MAX_FACTOR - MIN_FACTOR + 1));
+      if (questionKey(a, nextB) !== avoid) {
+        b = nextB;
+        break;
+      }
+    }
+  }
+
+  return makeQuestionForFactors(a, b);
 }
 
 function loadNumber(key: string) {
@@ -248,9 +270,7 @@ export default function Home() {
     const retryCandidate = missed.length > 0 && Math.random() < 0.45 ? missed[0] : null;
     const retry = retryCandidate && questionKey(retryCandidate.a, retryCandidate.b) !== previousKey ? retryCandidate : null;
     if (retry) {
-      const retried = makeQuestion(retry.a, previousKey);
-      const answer = retry.a * retry.b;
-      setQuestion({ ...retried, a: retry.a, b: retry.b, answer, choices: shuffle([answer, ...retried.choices.filter((choice) => choice !== answer)]).slice(0, 4) });
+      setQuestion(makeQuestionForFactors(retry.a, retry.b));
       setMissed((items) => items.slice(1));
       return;
     }
@@ -367,7 +387,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="game-stage" aria-live="polite">
+      <section className={`game-stage ${finished ? "is-finished" : ""}`} aria-live="polite">
         <label className="trail-picker">
           <span className="sr-only">Choose a multiplication table</span>
           <select value={table ?? "mix"} onChange={(event) => startRound(event.target.value === "mix" ? null : Number(event.target.value))}>
