@@ -727,6 +727,67 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   .finish-card button { min-width: 210px; padding: 13px 20px; }
 }
 
+@media (orientation: landscape) and (max-width: 950px) and (max-height: 500px) {
+  .safari-game { height: 100svh; min-height: 100svh; overflow: hidden; }
+  .game-header { min-height: 60px; padding: 6px 12px; }
+  .brand { gap: 7px; }
+  .brand-paw { width: 40px; border-radius: 12px; font-size: 21px; }
+  .brand strong { font-size: 20px; line-height: .95; }
+  .brand em { display: block; margin-top: 1px; font-size: .5em; }
+  .game-stats { gap: 5px; }
+  .hud-pill { min-width: 64px; height: 40px; display: flex; gap: 4px; padding: 4px 8px; border-radius: 12px; }
+  .hud-pill > span { font-size: 17px; }
+  .hud-pill strong { font-size: 15px; }
+  .hud-pill small { display: none; }
+  .sound-button { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
+  .game-stage { min-height: calc(100svh - 60px); width: calc(100% - 16px); padding: 80px 0 5px; }
+  .trail-picker { top: 8px; right: auto; left: 0; min-width: 100px; height: 40px; border-radius: 12px; }
+  .trail-picker select { padding: 0 30px 0 15px; font-size: 14px; }
+  .trail-picker > span:last-child { top: 5px; right: 11px; }
+  .question-world { width: 100%; }
+  .question-card { min-height: 230px; padding: 21px 10px 8px; border-radius: 22px; }
+  .boss-card { padding-top: 36px; }
+  .animal-guide { width: 80px; max-height: 82px; bottom: calc(100% - 6px); }
+  .animal-guide.guide-leo,
+  .animal-guide.guide-ziggy { bottom: calc(100% - 10px); }
+  .animal-guide.guide-gigi { width: 68px; bottom: calc(100% - 14px); }
+  .animal-guide.guide-mika { bottom: calc(100% - 12px); }
+  .boss-pride { bottom: calc(100% - 30px); width: 260px; }
+  .boss-hud { top: 6px; right: 14px; left: 14px; grid-template-columns: auto minmax(120px, 1fr) auto; gap: 8px; }
+  .boss-label { font-size: 9px; }
+  .boss-label span { display: none; }
+  .boss-timer { min-width: 76px; padding: 3px 8px; font-size: 14px; }
+  .boss-health { gap: 2px; }
+  .boss-health span { height: 8px; }
+  .question-count { font-size: 9px; }
+  .question-count::before,
+  .question-count::after { margin: 0 7px; }
+  .equation { min-height: 58px; gap: 13px; font-size: 48px; }
+  .answer-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .answer-grid button { min-height: 74px; border-radius: 16px; }
+  .answer-grid button strong { font-size: 32px; }
+  .answer-grid button kbd { top: 6px; left: 7px; width: 21px; height: 21px; font-size: 10px; }
+  .answer-mark { top: 6px; right: 7px; width: 23px; height: 23px; font-size: 14px; }
+  .feedback { min-height: 15px; margin: 7px 0 0; font-size: 10px; }
+  .round-progress { gap: 4px; margin-top: 2px; }
+  .round-progress span { width: 12px; height: 4px; }
+  .round-progress span.current { width: 18px; }
+  .night-transition-card { min-height: 220px; padding: 20px 16px; }
+  .night-transition-card h1 { margin: 12px 0 4px; font-size: 36px; }
+  .night-transition-card p { font-size: 15px; }
+  .transition-flame { margin-top: 8px; font-size: 28px; }
+  .game-stage.is-finished { min-height: calc(100svh - 60px); padding: 0; }
+  .finish-card,
+  .boss-result-card.defeat { min-height: 230px; margin-top: 70px; padding: 22px 14px 14px; }
+  .finish-guides { bottom: calc(100% - 6px); height: 76px; }
+  .finish-guides img,
+  .finish-guides img:nth-child(3) { width: 58px; height: 76px; }
+  .finish-card h1 { margin: 5px 0; font-size: 32px; }
+  .finish-card p { margin-bottom: 12px; font-size: 13px; }
+  .finish-card button { min-width: 190px; padding: 10px 18px; }
+  .finish-card button.mix-again { margin-top: 10px; }
+}
+
 @media (max-width: 430px) {
   .brand strong { font-size: 18px; }
   .brand-paw { width: 39px; font-size: 20px; }
