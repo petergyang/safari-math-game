@@ -53,7 +53,9 @@ test("includes real WebGL effects with an accessible reduced-motion fallback", a
   const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
   assert.match(page, /getContext\("webgl"/);
   assert.match(page, /gl\.drawArrays\(gl\.POINTS/);
-  assert.match(page, /VERTEX_SHADER/);
+  assert.match(page, /uniform float u_night;/);
+  assert.match(page, /vec3 fire = mix/);
+  assert.match(page, /const particleCount = night \? 112 : 54;/);
   assert.match(css, /perspective: 1300px/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.safari-webgl \{ display: none;/);
@@ -72,7 +74,7 @@ test("anchors each rotating guide above the question card", async () => {
 test("makes the complete visible answer card the stable tap target", async () => {
   const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
   assert.doesNotMatch(page, /handleTilt|style=\{\{ "--tilt/);
-  assert.match(page, /<section className="question-world">/);
+  assert.match(page, /<section className=\{`question-world \$\{phase === "boss" \? "boss-world" : ""\}`\}>/);
   assert.match(css, /\.answer-grid button \{[\s\S]*display: grid;[\s\S]*touch-action: manipulation;/);
   assert.match(css, /\.answer-grid button > \* \{ pointer-events: none; \}/);
   assert.doesNotMatch(css, /button strong[^\n]*translateZ/);
@@ -83,12 +85,31 @@ test("makes the complete visible answer card the stable tap target", async () =>
 
 test("centers a compact completion card independently", async () => {
   const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
-  assert.match(page, /game-stage \$\{finished \? "is-finished" : ""\}/);
+  assert.match(page, /game-stage \$\{isSummary \? "is-finished" : ""\}/);
   assert.match(css, /\.game-stage\.is-finished \{[\s\S]*justify-content: center;/);
   assert.match(css, /\.finish-card \{[\s\S]*min-height: 360px;[\s\S]*margin: 170px auto 0;[\s\S]*padding: 44px 34px 30px;/);
   assert.match(css, /\.finish-guides \{[\s\S]*top: auto;[\s\S]*bottom: calc\(100% - 16px\);/);
   assert.match(css, /\.finish-guides img \{[\s\S]*bottom: 0;[\s\S]*animation: guideSway/);
   assert.match(css, /\.finish-guides img:nth-child\(3\),[\s\S]*\.finish-guides img:nth-child\(5\) \{ bottom: -10px; \}/);
+});
+
+test("unlocks a timed twelve-question night boss level after level one", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.match(page, /type GamePhase = "day" \| "day-complete" \| "boss" \| "boss-won" \| "boss-lost";/);
+  assert.match(page, /const BOSS_TIME_LIMIT = 60;/);
+  assert.match(page, /setPhase\(isBossRound \? "boss-won" : "day-complete"\)/);
+  assert.match(page, /secondsRemaining -= 1;[\s\S]*setBossSecondsLeft\(secondsRemaining\)/);
+  assert.match(page, /ENTER NIGHT BATTLE/);
+  assert.match(page, /Defeat the pride before time runs out!/);
+  assert.match(page, /TRY BOSS AGAIN/);
+});
+
+test("ships the extracted night scene and boss art", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.match(css, /background-moonlit-boss\.webp/);
+  assert.match(css, /boss-battle-concept\.webp/);
+  assert.match(css, /\.boss-health \{[\s\S]*grid-template-columns: repeat\(12, 1fr\)/);
+  assert.match(css, /\.boss-card \{[\s\S]*rgba\(9, 30, 61, \.94\)/);
 });
 
 test("matches the compact translucent card concept", async () => {

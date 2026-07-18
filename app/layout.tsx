@@ -8,15 +8,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const base = new URL(`${protocol}://${host}`);
   const title = "Serena’s Safari Math";
-  const description = "A wildly fun multiplication adventure through the 2× to 12× tables.";
-  const socialImage = new URL("/og.png", base).toString();
+  const description = "Master the 2× to 12× tables, then beat the 60-second night safari boss battle.";
+  const socialImage = new URL("/og-boss.webp", base).toString();
 
   return {
     metadataBase: base,
     title,
     description,
     icons: { icon: "/favicon.png", shortcut: "/favicon.png" },
-    openGraph: { title, description, images: [{ url: socialImage, width: 1662, height: 946, alt: title }] },
+    openGraph: { title, description, images: [{ url: socialImage, width: 1734, height: 907, alt: title }] },
     twitter: { card: "summary_large_image", title, description, images: [socialImage] },
   };
 }
