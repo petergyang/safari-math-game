@@ -186,6 +186,15 @@ test("starts level-specific music from the first answer gesture", async () => {
   assert.match(page, /music\.volume = 0\.24/);
 });
 
+test("keeps phone layouts inside the viewport without scrolling", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.doesNotMatch(css, /html \{[^}]*min-width:/);
+  assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*?\.safari-game \{ height: 100svh; min-height: 100svh; overflow: hidden; \}/);
+  assert.match(css, /@media \(max-width: 720px\) and \(max-height: 700px\) \{[\s\S]*?\.question-card \{ min-height: 370px;/);
+  assert.match(css, /\.answer-grid button \{ min-height: 72px;/);
+  assert.match(css, /\.finish-card,[\s\S]*?min-height: 300px;/);
+});
+
 test("ships game-specific metadata and the immersive background", async () => {
   const [layout, css] = await Promise.all([readFile(layoutUrl, "utf8"), readFile(cssUrl, "utf8")]);
   assert.match(layout, /2× to 12× tables/);
