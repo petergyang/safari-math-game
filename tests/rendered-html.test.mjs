@@ -64,6 +64,16 @@ test("anchors each rotating guide above the question card", async () => {
   assert.match(css, /\.animal-guide \{[\s\S]*top: auto;[\s\S]*left: 50%;[\s\S]*bottom: calc\(100% - 18px\);/);
   assert.match(css, /transform: translateX\(-50%\) translateZ\(55px\)/);
   assert.match(css, /\.equation \{[\s\S]*padding-left: 0;/);
+  assert.match(css, /\.animal-guide\.guide-leo,[\s\S]*\.animal-guide\.guide-gigi,[\s\S]*\.animal-guide\.guide-ziggy \{ bottom: calc\(100% - 26px\); \}/);
+});
+
+test("makes the complete visible answer card the stable tap target", async () => {
+  const [page, css] = await Promise.all([readFile(pageUrl, "utf8"), readFile(cssUrl, "utf8")]);
+  assert.doesNotMatch(page, /handleTilt|style=\{\{ "--tilt/);
+  assert.match(page, /<section className="question-world">/);
+  assert.match(css, /\.answer-grid button \{[\s\S]*display: grid;[\s\S]*touch-action: manipulation;/);
+  assert.match(css, /\.answer-grid button > \* \{ pointer-events: none; \}/);
+  assert.doesNotMatch(css, /button strong[^\n]*translateZ/);
 });
 
 test("centers a compact completion card independently", async () => {

@@ -168,8 +168,6 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 .trail-picker > span:last-child { position: absolute; right: 20px; top: 13px; font-size: 24px; color: #426653; pointer-events: none; }
 
 .question-world {
-  --tilt-x: 0deg;
-  --tilt-y: 0deg;
   position: relative;
   width: min(1080px, 100%);
   margin: 0 auto;
@@ -193,9 +191,6 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
     inset 0 0 0 3px rgba(255, 255, 255, .78),
     0 13px 0 rgba(111, 83, 30, .19),
     0 28px 50px rgba(62, 48, 17, .21);
-  transform-style: preserve-3d;
-  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
-  transition: transform .12s ease-out;
 }
 .question-card::before,
 .question-card::after {
@@ -230,6 +225,9 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 .guide-gigi { width: clamp(215px, 20vw, 255px); }
 .guide-ziggy { width: clamp(230px, 21vw, 270px); }
 .guide-mika { width: clamp(225px, 21vw, 265px); }
+.animal-guide.guide-leo,
+.animal-guide.guide-gigi,
+.animal-guide.guide-ziggy { bottom: calc(100% - 26px); }
 
 .question-count {
   position: relative;
@@ -275,6 +273,8 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 }
 .answer-grid button {
   position: relative;
+  display: grid;
+  place-items: center;
   min-height: 142px;
   border: 3px solid rgba(162, 125, 54, .3);
   border-radius: 27px;
@@ -287,9 +287,11 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
     inset 0 0 0 2px white,
     0 9px 0 rgba(116, 86, 36, .22),
     0 16px 24px rgba(76, 56, 20, .1);
-  transform-style: preserve-3d;
+  touch-action: manipulation;
+  user-select: none;
   transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease, background .16s ease;
 }
+.answer-grid button > * { pointer-events: none; }
 .answer-grid button:hover:not(:disabled),
 .answer-grid button:focus-visible {
   outline: none;
@@ -298,7 +300,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   background: linear-gradient(145deg, white, #fff1c9);
 }
 .answer-grid button:active:not(:disabled) { transform: translateY(5px) scale(.985); box-shadow: inset 0 0 0 2px white, 0 3px 0 rgba(116, 86, 36, .22); }
-.answer-grid button strong { display: block; font-size: clamp(48px, 5vw, 68px); font-weight: 1000; transform: translateZ(18px); text-shadow: 0 4px 0 rgba(16, 47, 77, .06); }
+.answer-grid button strong { display: block; font-size: clamp(48px, 5vw, 68px); font-weight: 1000; text-shadow: 0 4px 0 rgba(16, 47, 77, .06); }
 .answer-grid button kbd {
   position: absolute;
   top: 15px;
@@ -402,6 +404,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   .question-world { width: calc(100% - 36px); margin-top: 0; }
   .question-card { min-height: 480px; padding: 42px 26px 22px; }
   .animal-guide { top: auto; left: 50%; bottom: calc(100% - 18px); width: 220px; max-height: 235px; }
+  .animal-guide.guide-leo, .animal-guide.guide-gigi, .animal-guide.guide-ziggy { bottom: calc(100% - 26px); }
   .equation { min-height: 145px; padding-left: 0; gap: 30px; font-size: clamp(75px, 12vw, 112px); }
   .answer-grid { margin: 0; }
 }
@@ -427,6 +430,7 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
   .question-count { font-size: 11px; }
   .question-count::before, .question-count::after { margin: 0 7px; }
   .animal-guide { top: auto; left: 50%; bottom: calc(100% - 10px); width: 155px; height: auto; max-height: 165px; transform: translateX(-50%) translateZ(55px); }
+  .animal-guide.guide-leo, .animal-guide.guide-gigi, .animal-guide.guide-ziggy { bottom: calc(100% - 18px); }
   .guide-gigi { width: 142px; }
   .equation { min-height: 150px; padding: 0; gap: 16px; font-size: clamp(64px, 22vw, 96px); }
   .answer-grid { grid-template-columns: repeat(2, 1fr); gap: 11px; margin: 0; transform: none; }
@@ -461,5 +465,4 @@ button, select, .question-world { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
   .safari-webgl { display: none; }
-  .question-card { transform: none !important; }
 }

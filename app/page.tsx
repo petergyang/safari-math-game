@@ -230,7 +230,6 @@ export default function Home() {
   const [soundOn, setSoundOn] = useState(true);
   const [musicOn, setMusicOn] = useState(false);
   const [missed, setMissed] = useState<{ a: number; b: number }[]>([]);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const musicRef = useRef<HTMLAudioElement>(null);
 
@@ -357,15 +356,6 @@ export default function Home() {
     setFeedback(nextTable ? `${nextTable}s trail ready!` : "Safari Mix ready!");
   };
 
-  const handleTilt = (event: React.PointerEvent<HTMLElement>) => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    setTilt({
-      x: ((event.clientY - rect.top) / rect.height - 0.5) * -3,
-      y: ((event.clientX - rect.left) / rect.width - 0.5) * 4,
-    });
-  };
-
   const progressDots = useMemo(() => Array.from({ length: ROUND_LENGTH }, (_, index) => index), []);
 
   return (
@@ -398,12 +388,7 @@ export default function Home() {
         </label>
 
         {!finished ? (
-          <section
-            className="question-world"
-            onPointerMove={handleTilt}
-            onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-            style={{ "--tilt-x": `${tilt.x}deg`, "--tilt-y": `${tilt.y}deg` } as React.CSSProperties}
-          >
+          <section className="question-world">
             <img className={`animal-guide guide-${guide.name.toLowerCase()}`} src={guide.image} alt={`${guide.name}, your safari guide`} />
             <div className="question-card">
               <div className="question-count">QUESTION {round + 1} OF {ROUND_LENGTH}</div>
