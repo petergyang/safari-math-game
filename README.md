@@ -4,9 +4,9 @@ A safari-themed multiplication game for practicing facts from 2 through 12. Play
 
 ## Demo
 
-[![Watch the 32-second Safari Math Game demo](media/safari-math-demo.jpg)](media/safari-math-demo.mp4)
+https://github.com/user-attachments/assets/2f4e7ed7-f2f2-4609-adc6-1c70bcd6794f
 
-[Watch the demo video](media/safari-math-demo.mp4) · [View the original post on X](https://x.com/petergyang/status/2078638568784994686)
+[View the original post on X](https://x.com/petergyang/status/2078638568784994686)
 
 ## Play
 
